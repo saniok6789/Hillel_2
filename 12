@@ -1,0 +1,22 @@
+class LoggingMeta(type):
+    def __new__(cls, name, bases, dct):
+        new_cls = super().__new__(cls, name, bases, dct)
+        for key, value in dct.items():
+            if not key.startswith('__'):
+                private_name = "_" + key
+                def getter(self, private_name=private_name):
+                    print(f"Accessing {key}")
+                    return getattr(self, private_name)
+                def setter(self, value, private_name=private_name):
+                    print(f"Setting {key} to {value}")
+                    setattr(self, private_name, value)
+                setattr(new_cls, key, property(getter, setter))
+        return new_cls
+
+class MyClass(metaclass=LoggingMeta):
+    name = "Initial Name"
+
+obj = MyClass()
+print(obj.name)
+obj.name = "New Name"
+print(obj.name)
