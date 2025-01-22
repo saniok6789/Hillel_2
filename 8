@@ -1,0 +1,17 @@
+def analyze_inheritance(cls):
+    print(f"Клас {cls.__name__} наслідує від:")
+    for base in cls.__bases__:
+        print(f"- {base.__name__}")
+        for attr in dir(base):
+            if not attr.startswith("__"):
+                print(f"  - {attr}")
+
+class Parent:
+    def parent_method(self):
+        pass
+
+class Child(Parent):
+    def child_method(self):
+        pass
+
+analyze_inheritance(Child)
