@@ -1,0 +1,32 @@
+class TypeCheckedMeta(type):
+    def __new__(cls, name, bases, dct):
+        new_dct = {}
+        for key, value in dct.items():
+            if isinstance(value, type):
+                private_name = '_' + key
+                new_dct[private_name] = None
+
+                def getter(self, private_name=private_name):
+                    return getattr(self, private_name)
+
+                def setter(self, value, attr_type=value, private_name=private_name):
+                    if not isinstance(value, attr_type):
+                        raise TypeError(f"Expected type {attr_type.__name__} for {key}, got {type(value).__name__}")
+                    setattr(self, private_name, value)
+                
+                new_dct[key] = property(getter, setter)
+            else:
+                new_dct[key] = value
+        return type.__new__(cls, name, bases, new_dct)
+
+class Person(metaclass=TypeCheckedMeta):
+    name: str = str
+    age: int = int
+
+p = Person()
+p.name = "John"
+print(p.name)
+try:
+    p.age = "thirty"  
+except TypeError as e:
+    print(e)
