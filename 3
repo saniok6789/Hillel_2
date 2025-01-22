@@ -1,0 +1,17 @@
+import inspect
+
+def analyze_module(module_name):
+    module = __import__(module_name)
+    print("Функції:")
+    for name, obj in inspect.getmembers(module, inspect.isfunction):
+        args = inspect.signature(obj)
+        print(f"- {name}{args}")
+    print("\nКласи:")
+    classes = [name for name, obj in inspect.getmembers(module, inspect.isclass)]
+    if classes:
+        for name in classes:
+            print(f"- {name}")
+    else:
+        print("- <немає класів у модулі>")
+
+analyze_module("math")
