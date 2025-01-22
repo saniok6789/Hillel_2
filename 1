@@ -1,0 +1,17 @@
+class MyClass:
+    def __init__(self, value):
+        self.value = value
+
+    def say_hello(self):
+        return f"Hello, {self.value}"
+
+def analyze_object(obj):
+    print(f"Тип об'єкта: {type(obj)}\n")
+    print("Атрибути і методи:")
+    for attribute in dir(obj):
+        if not attribute.startswith('__'):
+            attr_value = getattr(obj, attribute)
+            print(f"- {attribute}: {type(attr_value)}")
+
+obj = MyClass("World")
+analyze_object(obj)
