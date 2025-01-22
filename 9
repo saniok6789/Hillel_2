@@ -1,0 +1,13 @@
+class DynamicProperties:
+    def add_property(self, name, default=None):
+        private_name = '_' + name
+        setattr(self, private_name, default)
+        getter = lambda self: getattr(self, private_name)
+        setter = lambda self, value: setattr(self, private_name, value)
+        setattr(self.__class__, name, property(getter, setter))
+
+obj = DynamicProperties()
+obj.add_property('name', 'default_name')
+print(obj.name)  # Перевірка встановленого значення за замовчуванням
+obj.name = "Python"
+print(obj.name)  # Перевірка оновленого значення
