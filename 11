@@ -1,0 +1,14 @@
+class LimitedAttributesMeta(type):
+    def __new__(cls, name, bases, dct):
+        if len([k for k in dct if not k.startswith('__')]) > 3:
+            raise TypeError(f"Клас {name} не може мати більше 3 атрибутів")
+        return super().__new__(cls, name, bases, dct)
+
+class LimitedClass(metaclass=LimitedAttributesMeta):
+    attr1 = 1
+    attr2 = 2
+    attr3 = 3
+    # attr4 = 4  # Це розкоментування спричинить помилку
+
+obj = LimitedClass()
+print(obj.attr1, obj.attr2, obj.attr3)
