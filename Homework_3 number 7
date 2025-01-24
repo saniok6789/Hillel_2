@@ -1,0 +1,20 @@
+class VectorN:
+    def __init__(self, *components):
+        self.components = components
+
+    def __add__(self, other):
+        return VectorN(*[a + b for a, b in zip(self.components, other.components)])
+
+    def __sub__(self, other):
+        return VectorN(*[a - b for a, b in zip(self.components, other.components)])
+
+    def __mul__(self, other):
+        return sum(a * b for a, b in zip(self.components, other.components))
+
+    def __repr__(self):
+        return f"VectorN{self.components}"
+
+v1 = VectorN(1, 2, 3)
+v2 = VectorN(4, 5, 6)
+print(v1 + v2)  # VectorN(5, 7, 9)
+print(v1 * v2)  # 32
