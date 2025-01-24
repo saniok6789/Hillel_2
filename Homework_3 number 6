@@ -1,0 +1,21 @@
+import re
+
+class User:
+    def __init__(self, first_name, last_name, email):
+        self.first_name = first_name
+        self.last_name = last_name
+        self.email = email
+
+    @property
+    def email(self):
+        return self._email
+
+    @email.setter
+    def email(self, value):
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", value):
+            raise ValueError("Invalid email format")
+        self._email = value
+
+user = User("John", "Doe", "john@example.com")
+print(user.email)  # john@example.com
+user.email = "new@example.com"
