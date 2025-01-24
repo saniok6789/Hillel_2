@@ -27,7 +27,6 @@ class Fraction:
     def __repr__(self):
         return f"{self.numerator}/{self.denominator}"
 
-# Приклад використання
 a = Fraction(1, 2)
 b = Fraction(1, 3)
 print(a + b)  # 5/6
