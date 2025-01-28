@@ -1,0 +1,42 @@
+class PriceDescriptor:
+    def __get__(self, instance, owner):
+        return instance._price
+    
+    def __set__(self, instance, value):
+        if value < 0:
+            raise ValueError("Price cannot be negative")
+        instance._price = value
+
+class ProductWithDescriptor:
+    price = PriceDescriptor()
+    def __init__(self, name, price):
+        self.name = name
+        self.price = price
+
+class ProductWithGetSet:
+    def __init__(self, name, price):
+        self.name = name
+        self.set_price(price)
+    
+    def get_price(self):
+        return self._price
+    
+    def set_price(self, value):
+        if value < 0:
+            raise ValueError("Price cannot be negative")
+        self._price = value
+
+class ProductWithProperty:
+    def __init__(self, name, price):
+        self.name = name
+        self._price = price
+    
+    @property
+    def price(self):
+        return self._price
+    
+    @price.setter
+    def price(self, value):
+        if value < 0:
+            raise ValueError("Price cannot be negative")
+        self._price = value
