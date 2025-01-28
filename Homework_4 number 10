@@ -1,0 +1,13 @@
+import zipfile
+
+class ArchiveManager:
+    def __init__(self, archive_name):
+        self.archive_name = archive_name
+        self.archive = None
+
+    def __enter__(self):
+        self.archive = zipfile.ZipFile(self.archive_name, 'w')
+        return self.archive
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.archive.close()
