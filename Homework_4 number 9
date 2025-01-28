@@ -1,0 +1,15 @@
+import shutil
+
+class BackupManager:
+    def __init__(self, filepath):
+        self.filepath = filepath
+        self.backup_path = filepath + '.bak'
+
+    def __enter__(self):
+        shutil.copy(self.filepath, self.backup_path)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            os.remove(self.backup_path)
+        else:
+            shutil.copy(self.backup_path, self.filepath)
