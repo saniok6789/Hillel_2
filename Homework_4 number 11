@@ -1,0 +1,8 @@
+def incremental_average(filename):
+    total, count = 0, 0
+    with open(filename, 'r') as file:
+        for line in file:
+            value = float(line.strip())
+            count += 1
+            total += value
+            yield total / count
