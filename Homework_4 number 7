@@ -1,0 +1,5 @@
+def error_filter(filename):
+    with open(filename, 'r') as file:
+        for line in file:
+            if any(code in line for code in (' 4', ' 5')):
+                yield line.strip()
