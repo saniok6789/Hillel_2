@@ -1,0 +1,23 @@
+import os
+import csv
+from PIL import Image
+
+class ImageMetadataCollector:
+    def __init__(self, directory):
+        self.directory = directory
+        self.files = iter(os.listdir(directory))
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        while True:
+            file = next(self.files)
+            if file.lower().endswith(('png', 'jpg', 'jpeg')):
+                image_path = os.path.join(self.directory, file)
+                with Image.open(image_path) as img:
+                    return {
+                        "filename": file,
+                        "size": img.size,
+                        "format": img.format,
+                    }
