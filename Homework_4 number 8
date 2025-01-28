@@ -1,0 +1,15 @@
+import json
+
+class ConfigManager:
+    def __init__(self, filepath):
+        self.filepath = filepath
+        self.config = None
+
+    def __enter__(self):
+        with open(self.filepath, 'r') as file:
+            self.config = json.load(file)
+        return self.config
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        with open(self.filepath, 'w') as file:
+            json.dump(self.config, file, indent=4)
