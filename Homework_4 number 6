@@ -1,0 +1,14 @@
+import os
+
+class DirectoryIterator:
+    def __init__(self, directory):
+        self.files = iter(os.scandir(directory))
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        file = next(self.files)
+        if file.is_file():
+            return file.name, os.path.getsize(file.path)
+        return self.__next__()
