@@ -1,0 +1,8 @@
+import uuid
+
+class UniqueIDGenerator:
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return str(uuid.uuid4())
