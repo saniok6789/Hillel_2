@@ -1,0 +1,15 @@
+class Price:
+    def __init__(self, amount):
+        self.amount = round(amount, 2)
+    
+    def __add__(self, other):
+        return Price(self.amount + other.amount)
+    
+    def __sub__(self, other):
+        return Price(self.amount - other.amount)
+    
+    def __eq__(self, other):
+        return self.amount == other.amount
+    
+    def __lt__(self, other):
+        return self.amount < other.amount
