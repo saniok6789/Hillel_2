@@ -1,0 +1,13 @@
+class ReverseFileReader:
+    def __init__(self, filename):
+        self.filename = filename
+
+    def __iter__(self):
+        with open(self.filename, 'r') as file:
+            self.lines = file.readlines()
+        return self
+
+    def __next__(self):
+        if not self.lines:
+            raise StopIteration
+        return self.lines.pop().strip()
