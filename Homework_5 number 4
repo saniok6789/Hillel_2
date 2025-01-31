@@ -1,0 +1,24 @@
+class InsufficientResourcesException(Exception):
+    def __init__(self, required_resource, required_amount, current_amount):
+        super().__init__(f"Not enough {required_resource}. Required: {required_amount}, Available: {current_amount}")
+        self.required_resource = required_resource
+        self.required_amount = required_amount
+        self.current_amount = current_amount
+
+
+def check_resources(resource, required, available):
+    if available < required:
+        raise InsufficientResourcesException(resource, required, available)
+    return "Action successful"
+
+
+if __name__ == "__main__":
+    try:
+        resource = input("Enter resource type: ")
+        required = float(input("Enter required amount: "))
+        available = float(input("Enter available amount: "))
+        print(check_resources(resource, required, available))
+    except InsufficientResourcesException as e:
+        print(e)
+    except ValueError:
+        print("Invalid input: Numbers expected")
