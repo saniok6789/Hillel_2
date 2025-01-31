@@ -1,0 +1,18 @@
+class GameEventException(Exception):
+    def __init__(self, event_type, details):
+        super().__init__(f"Game event occurred: {event_type}")
+        self.event_type = event_type
+        self.details = details
+
+
+def trigger_event(event_type, details):
+    raise GameEventException(event_type, details)
+
+
+if __name__ == "__main__":
+    try:
+        event = input("Enter event type (death/levelUp): ")
+        details = input("Enter event details: ")
+        trigger_event(event, {"details": details})
+    except GameEventException as e:
+        print(f"Event triggered: {e.event_type}, Details: {e.details}")
