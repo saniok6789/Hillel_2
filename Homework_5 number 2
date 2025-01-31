@@ -1,0 +1,19 @@
+def calculate_average(filename):
+    try:
+        with open(filename, 'r') as file:
+            numbers = file.readlines()
+            numbers = [float(num.strip()) for num in numbers]
+            if not numbers:
+                return "File is empty"
+            if len(numbers) == 1:
+                return "Only one number in file: cannot calculate average"
+            return sum(numbers) / len(numbers)
+    except FileNotFoundError:
+        return "File not found"
+    except ValueError:
+        return "File contains non-numeric data"
+
+
+if __name__ == "__main__":
+    filename = input("Enter filename: ")
+    print("Average:", calculate_average(filename))
