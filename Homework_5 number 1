@@ -1,0 +1,33 @@
+class UnknownOperationError(Exception):
+    def __init__(self, operation):
+        super().__init__(f"Unknown operation: {operation}")
+        self.operation = operation
+
+
+def calculator(a, b, operation):
+    try:
+        a, b = float(a), float(b)
+        if operation == '+':
+            return a + b
+        elif operation == '-':
+            return a - b
+        elif operation == '*':
+            return a * b
+        elif operation == '/':
+            if b == 0:
+                raise ZeroDivisionError("Cannot divide by zero")
+            return a / b
+        else:
+            raise UnknownOperationError(operation)
+    except ValueError:
+        return "Invalid input: Numbers expected"
+    except OverflowError:
+        return "Overflow error: Number too large"
+
+
+if __name__ == "__main__":
+    num1 = input("Enter first number: ")
+    num2 = input("Enter second number: ")
+    op = input("Enter operation (+, -, *, /): ")
+    result = calculator(num1, num2, op)
+    print("Result:", result)
