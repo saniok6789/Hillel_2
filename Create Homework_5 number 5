@@ -1,0 +1,26 @@
+class InsufficientFundsException(Exception):
+    def __init__(self, required_amount, current_balance, currency="USD", transaction_type="transaction"):
+        super().__init__(f"Insufficient funds for {transaction_type}. Required: {required_amount} {currency}, Available: {current_balance} {currency}")
+        self.required_amount = required_amount
+        self.current_balance = current_balance
+        self.currency = currency
+        self.transaction_type = transaction_type
+
+
+def process_transaction(required_amount, current_balance, currency="USD", transaction_type="transaction"):
+    if current_balance < required_amount:
+        raise InsufficientFundsException(required_amount, current_balance, currency, transaction_type)
+    return "Transaction successful"
+
+
+if __name__ == "__main__":
+    try:
+        transaction_type = input("Enter transaction type (withdrawal/purchase): ")
+        required_amount = float(input("Enter required amount: "))
+        current_balance = float(input("Enter current balance: "))
+        currency = input("Enter currency: ")
+        print(process_transaction(required_amount, current_balance, currency, transaction_type))
+    except InsufficientFundsException as e:
+        print(e)
+    except ValueError:
+        print("Invalid input: Numbers expected")
