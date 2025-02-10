@@ -1,0 +1,102 @@
+from typing import List, Tuple, Union, Optional, TypeVar, Callable, Dict, Any, Awaitable, Protocol
+from typing_extensions import Final, TypedDict
+from abc import ABC, abstractmethod
+import asyncio
+
+# Завдання 1
+def calculate_discount(price: float, discount: float) -> float:
+    if discount >= 100:
+        return 0.0
+    return price * (1 - discount / 100)
+
+# Завдання 2
+def filter_adults(people: List[Tuple[str, int]]) -> List[Tuple[str, int]]:
+    return [person for person in people if person[1] >= 18]
+
+# Завдання 3
+def parse_input(value: Union[int, str]) -> Optional[int]:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return None
+
+# Завдання 4
+T = TypeVar('T')
+
+def get_first(lst: List[T]) -> Optional[T]:
+    return lst[0] if lst else None
+
+# Завдання 5
+def apply_operation(x: int, operation: Callable[[int], int]) -> int:
+    return operation(x)
+
+def square(n: int) -> int:
+    return n * n
+
+def double(n: int) -> int:
+    return n * 2
+
+# Завдання 7
+class User(TypedDict):
+    id: int
+    name: str
+    is_admin: bool
+
+class UserDatabase(Protocol):
+    def get_user(self, user_id: int) -> Optional[User]:
+        ...
+    def save_user(self, user: User) -> None:
+        ...
+
+class InMemoryUserDB:
+    def __init__(self):
+        self._users = {}
+
+    def get_user(self, user_id: int) -> Optional[User]:
+        return self._users.get(user_id)
+
+    def save_user(self, user: User) -> None:
+        self._users[user["id"]] = user
+
+# Завдання 8
+class Processor:
+    def __init__(self, data: List[T]):
+        self.data = data
+
+    def apply(self, func: Callable[[T], T]) -> List[T]:
+        return [func(item) for item in self.data]
+
+# Завдання 9
+class Config:  # Final class
+    pass
+
+class BaseRepository(ABC):
+    @abstractmethod
+    def save(self, data: Dict[str, Any]) -> None:
+        pass
+
+class SQLRepository(BaseRepository):
+    def save(self, data: Dict[str, Any]) -> None:
+        print(f"Saving to SQL: {data}")
+
+# Завдання 10
+class AsyncFetcher:
+    async def fetch(self, url: str) -> Awaitable[Dict[str, Any]]:
+        await asyncio.sleep(1)  # Симуляція запиту
+        return {"url": url, "status": "success"}
+
+# Завдання 12 (плагіни)
+class EventDispatcher:
+    def __init__(self):
+        self._events: Dict[str, List[Callable[[Any], None]]] = {}
+
+    def register_event(self, name: str, handler: Callable[[Any], None]) -> None:
+        if name not in self._events:
+            self._events[name] = []
+        self._events[name].append(handler)
+
+    def dispatch_event(self, name: str, data: Any) -> None:
+        if name in self._events:
+            for handler in self._events[name]:
+                handler(data)
