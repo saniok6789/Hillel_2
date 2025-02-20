@@ -1,0 +1,466 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Кінобаза (Cinema Database) — консольний застосунок для управління
+базою даних SQLite, що містить інформацію про фільми та акторів.
+
+Функціонал застосунку:
+1. Додати фільм
+2. Додати актора
+3. Показати всі фільми з акторами (JOIN)
+4. Показати унікальні жанри (DISTINCT)
+5. Показати кількість фільмів за жанром (COUNT)
+6. Показати середній рік народження акторів у фільмах певного жанру (AVG)
+7. Пошук фільму за назвою (LIKE)
+8. Показати фільми (з пагінацією; LIMIT, OFFSET)
+9. Показати імена всіх акторів та назви всіх фільмів (UNION)
+10. Показати список фільмів з їх віком (movie_age())
+0. Вихід
+
+Додатково:
+- Використання власної функції movie_age() (SQLite User Defined Function),
+  яка обчислює скільки років минуло з моменту виходу фільму відносно поточного року.
+"""
+
+import sqlite3
+import sys
+from datetime import datetime
+
+
+def create_connection(db_name: str) -> sqlite3.Connection:
+    """
+    Створює (або відкриває) з'єднання з базою даних SQLite та повертає об'єкт Connection.
+    
+    :param db_name: Назва файлу бази даних.
+    :return: Об'єкт sqlite3.Connection
+    """
+    try:
+        conn = sqlite3.connect(db_name)
+        # Вмикаємо підтримку FOREIGN KEY
+        conn.execute("PRAGMA foreign_keys = ON;")
+        return conn
+    except sqlite3.Error as e:
+        print(f"Помилка під час створення з'єднання: {e}")
+        sys.exit(1)
+
+
+def create_tables(conn: sqlite3.Connection) -> None:
+    """
+    Створює необхідні таблиці (movies, actors, movie_cast) у базі даних, якщо вони не існують.
+
+    :param conn: Об'єкт sqlite3.Connection
+    """
+    try:
+        cursor = conn.cursor()
+        
+        # Створення таблиці 'movies'
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS movies (
+                id INTEGER PRIMARY KEY,
+                title TEXT NOT NULL,
+                release_year INTEGER,
+                genre TEXT
+            );
+        """)
+        
+        # Створення таблиці 'actors'
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS actors (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                birth_year INTEGER
+            );
+        """)
+        
+        # Створення таблиці 'movie_cast' (зв'язок "багато-до-багатьох")
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS movie_cast (
+                movie_id INTEGER,
+                actor_id INTEGER,
+                PRIMARY KEY(movie_id, actor_id),
+                FOREIGN KEY(movie_id) REFERENCES movies(id) ON DELETE CASCADE,
+                FOREIGN KEY(actor_id) REFERENCES actors(id) ON DELETE CASCADE
+            );
+        """)
+        
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"Помилка під час створення таблиць: {e}")
+        conn.rollback()
+
+
+def movie_age_udf(year: int) -> int:
+    """
+    Користувацька функція для обчислення віку фільму у роках
+    відносно поточного року (за datetime.now()).
+
+    :param year: Рік випуску фільму (release_year).
+    :return: Кількість років, що минули з моменту виходу фільму.
+    """
+    current_year = datetime.now().year
+    return current_year - year
+
+
+def register_functions(conn: sqlite3.Connection) -> None:
+    """
+    Реєструє користувацькі функції (UDF) у SQLite (movie_age).
+
+    :param conn: Об'єкт sqlite3.Connection
+    """
+    conn.create_function("movie_age", 1, movie_age_udf)
+
+
+def add_movie(conn: sqlite3.Connection) -> None:
+    """
+    Додає новий фільм до таблиці movies.
+    Також дозволяє одразу додати акторів, які знімалися у цьому фільмі.
+
+    :param conn: Об'єкт sqlite3.Connection
+    """
+    title = input("Введіть назву фільму: ")
+    release_year = input("Введіть рік випуску фільму (ціле число): ")
+    genre = input("Введіть жанр фільму: ")
+
+    try:
+        release_year = int(release_year)
+    except ValueError:
+        print("Некоректне значення року. Використаю 0 за замовчуванням.")
+        release_year = 0
+
+    # Додаємо запис у таблицю movies
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "INSERT INTO movies (title, release_year, genre) VALUES (?, ?, ?)",
+            (title, release_year, genre)
+        )
+        conn.commit()
+        movie_id = cursor.lastrowid
+        print(f"Фільм з ID {movie_id} успішно додано!")
+    except sqlite3.Error as e:
+        print(f"Помилка під час додавання фільму: {e}")
+        conn.rollback()
+        return
+
+    # Додаємо акторів
+    while True:
+        add_actor_choice = input("Додати актора до фільму? (y/n): ").strip().lower()
+        if add_actor_choice == 'y':
+            actor_id = input("Введіть ID актора, або 'new', щоб додати нового: ").strip()
+            if actor_id.lower() == 'new':
+                # Викликаємо процедуру додавання актора
+                actor_id = add_actor(conn, return_id=True)
+            else:
+                try:
+                    actor_id = int(actor_id)
+                except ValueError:
+                    print("Некоректне значення. Пропуск.")
+                    continue
+
+            # Перевіримо, чи існує актор із таким ID
+            cursor.execute("SELECT id FROM actors WHERE id = ?", (actor_id,))
+            row = cursor.fetchone()
+            if not row:
+                print(f"Актор з ID {actor_id} не існує. Пропуск.")
+                continue
+
+            # Додаємо запис у movie_cast
+            try:
+                cursor.execute(
+                    "INSERT INTO movie_cast (movie_id, actor_id) VALUES (?, ?)",
+                    (movie_id, actor_id)
+                )
+                conn.commit()
+                print(f"Актор {actor_id} успішно доданий до фільму {movie_id}.")
+            except sqlite3.Error as e:
+                print(f"Помилка під час додавання актора до фільму: {e}")
+                conn.rollback()
+
+        elif add_actor_choice == 'n':
+            break
+        else:
+            print("Невідома відповідь. Спробуйте ще раз.")
+
+
+def add_actor(conn: sqlite3.Connection, return_id: bool = False) -> int:
+    """
+    Додає нового актора до таблиці actors.
+
+    :param conn: Об'єкт sqlite3.Connection
+    :param return_id: Якщо True — повертає ID щойно створеного актора.
+    :return: ID створеного (або існуючого) актора, якщо return_id=True, інакше 0.
+    """
+    name = input("Введіть ім'я актора: ")
+    birth_year = input("Введіть рік народження актора (ціле число): ")
+
+    try:
+        birth_year = int(birth_year)
+    except ValueError:
+        print("Некоректне значення року народження. Використаю 0 за замовчуванням.")
+        birth_year = 0
+
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "INSERT INTO actors (name, birth_year) VALUES (?, ?)",
+            (name, birth_year)
+        )
+        conn.commit()
+        actor_id = cursor.lastrowid
+        print(f"Актор з ID {actor_id} успішно доданий!")
+        if return_id:
+            return actor_id
+        return 0
+    except sqlite3.Error as e:
+        print(f"Помилка під час додавання актора: {e}")
+        conn.rollback()
+        return 0
+
+
+def show_movies_with_actors(conn: sqlite3.Connection) -> None:
+    """
+    Виводить список фільмів разом з іменами акторів, які знімалися у кожному з них,
+    використовуючи INNER JOIN (JOIN між movies, movie_cast та actors).
+
+    :param conn: Об'єкт sqlite3.Connection
+    """
+    query = """
+        SELECT m.id, m.title, GROUP_CONCAT(a.name, ', ') AS actors
+        FROM movies m
+        INNER JOIN movie_cast mc ON m.id = mc.movie_id
+        INNER JOIN actors a ON a.id = mc.actor_id
+        GROUP BY m.id, m.title
+        ORDER BY m.id;
+    """
+    cursor = conn.cursor()
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    print("Фільми та актори:")
+    for row in rows:
+        movie_id, movie_title, actors_str = row
+        print(f"ID:{movie_id}. Фільм: \"{movie_title}\", Актори: {actors_str}")
+
+
+def show_unique_genres(conn: sqlite3.Connection) -> None:
+    """
+    Виводить унікальний список жанрів фільмів (DISTINCT).
+
+    :param conn: Об'єкт sqlite3.Connection
+    """
+    query = "SELECT DISTINCT genre FROM movies WHERE genre IS NOT NULL ORDER BY genre;"
+    cursor = conn.cursor()
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    print("Унікальні жанри:")
+    for idx, row in enumerate(rows, start=1):
+        print(f"{idx}. {row[0]}")
+
+
+def show_movie_count_by_genre(conn: sqlite3.Connection) -> None:
+    """
+    Виводить кількість фільмів за кожним жанром (COUNT).
+
+    :param conn: Об'єкт sqlite3.Connection
+    """
+    query = """
+        SELECT genre, COUNT(*) as film_count
+        FROM movies
+        WHERE genre IS NOT NULL
+        GROUP BY genre
+        ORDER BY film_count DESC;
+    """
+    cursor = conn.cursor()
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    print("Жанри та кількість фільмів:")
+    for idx, row in enumerate(rows, start=1):
+        genre, film_count = row
+        print(f"{idx}. {genre}: {film_count}")
+
+
+def show_avg_birth_year_by_genre(conn: sqlite3.Connection) -> None:
+    """
+    Виводить середній рік народження акторів, що знімалися у фільмах певного жанру (AVG).
+
+    :param conn: Об'єкт sqlite3.Connection
+    """
+    genre = input("Введіть жанр: ").strip()
+    query = """
+        SELECT AVG(a.birth_year)
+        FROM actors a
+        JOIN movie_cast mc ON a.id = mc.actor_id
+        JOIN movies m ON mc.movie_id = m.id
+        WHERE m.genre = ?;
+    """
+    cursor = conn.cursor()
+    cursor.execute(query, (genre,))
+    row = cursor.fetchone()
+    if row and row[0] is not None:
+        avg_birth_year = row[0]
+        print(f"Середній рік народження акторів для жанру '{genre}': {avg_birth_year:.2f}")
+    else:
+        print(f"Немає даних для жанру '{genre}'.")
+
+
+def search_movies_by_title(conn: sqlite3.Connection) -> None:
+    """
+    Пошук фільмів за ключовим словом у назві, використовуючи LIKE.
+
+    :param conn: Об'єкт sqlite3.Connection
+    """
+    keyword = input("Введіть ключове слово для пошуку у назві фільму: ").strip()
+    # Додаємо відсотки для часткового збігу
+    pattern = f"%{keyword}%"
+    query = """
+        SELECT id, title, release_year
+        FROM movies
+        WHERE title LIKE ?
+        ORDER BY title;
+    """
+    cursor = conn.cursor()
+    cursor.execute(query, (pattern,))
+    rows = cursor.fetchall()
+    if rows:
+        print("Знайдені фільми:")
+        for idx, row in enumerate(rows, start=1):
+            movie_id, title, year = row
+            print(f"{idx}. {title} ({year}) [ID={movie_id}]")
+    else:
+        print("Нічого не знайдено.")
+
+
+def show_movies_with_pagination(conn: sqlite3.Connection) -> None:
+    """
+    Показує фільми з пагінацією (LIMIT і OFFSET).
+
+    :param conn: Об'єкт sqlite3.Connection
+    """
+    try:
+        page_size = int(input("Скільки фільмів виводити на сторінку? (за замовчуванням 5): ") or 5)
+        page_num = int(input("Номер сторінки для відображення? (за замовчуванням 1): ") or 1)
+    except ValueError:
+        print("Некоректні вхідні дані. Використаємо значення за замовчуванням.")
+        page_size = 5
+        page_num = 1
+
+    offset = (page_num - 1) * page_size
+    
+    query = """
+        SELECT id, title
+        FROM movies
+        ORDER BY id
+        LIMIT ? OFFSET ?;
+    """
+    cursor = conn.cursor()
+    cursor.execute(query, (page_size, offset))
+    rows = cursor.fetchall()
+
+    print(f"Сторінка {page_num}, відображено {len(rows)} фільм(ів):")
+    for idx, row in enumerate(rows, start=1):
+        movie_id, title = row
+        print(f"{idx}. {title} (ID={movie_id})")
+
+
+def show_actors_and_movies_union(conn: sqlite3.Connection) -> None:
+    """
+    Виводить імена всіх акторів та назви всіх фільмів одним списком (UNION).
+    Для відрізнення додамо позначку (Actor) або (Movie).
+
+    :param conn: Об'єкт sqlite3.Connection
+    """
+    query = """
+        SELECT name || ' (Actor)' AS item
+        FROM actors
+        UNION
+        SELECT title || ' (Movie)' AS item
+        FROM movies
+        ORDER BY item;
+    """
+    cursor = conn.cursor()
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    print("Всі актори та фільми (UNION):")
+    for idx, row in enumerate(rows, start=1):
+        print(f"{idx}. {row[0]}")
+
+
+def show_movies_with_age(conn: sqlite3.Connection) -> None:
+    """
+    Використовує функцію movie_age(), щоб показати список фільмів
+    разом із кількістю років, що минули з моменту їх виходу.
+
+    :param conn: Об'єкт sqlite3.Connection
+    """
+    query = """
+        SELECT id, title, release_year, movie_age(release_year) as age
+        FROM movies
+        ORDER BY id;
+    """
+    cursor = conn.cursor()
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    print("Фільми та їхній вік:")
+    for idx, row in enumerate(rows, start=1):
+        movie_id, title, release_year, age = row
+        print(f"{idx}. Фільм: \"{title}\" — {age} роки(ів) (Рік випуску: {release_year})")
+
+
+def main():
+    """
+    Головна функція програми. Відповідає за з'єднання з БД, виклик усіх допоміжних функцій,
+    а також взаємодію з користувачем через текстове меню.
+    """
+    # Ініціалізація
+    database_name = "cinema.db"
+    conn = create_connection(database_name)
+    create_tables(conn)
+    register_functions(conn)
+
+    # Меню
+    while True:
+        print("\nГоловне меню:")
+        print("1. Додати фільм")
+        print("2. Додати актора")
+        print("3. Показати всі фільми з акторами (JOIN)")
+        print("4. Показати унікальні жанри (DISTINCT)")
+        print("5. Показати кількість фільмів за жанром (COUNT)")
+        print("6. Показати середній рік народження акторів у фільмах певного жанру (AVG)")
+        print("7. Пошук фільму за назвою (LIKE)")
+        print("8. Показати фільми (з пагінацією; LIMIT, OFFSET)")
+        print("9. Показати імена всіх акторів та назви всіх фільмів (UNION)")
+        print("10. Показати список фільмів з їх віком (movie_age())")
+        print("0. Вихід")
+
+        choice = input("Виберіть дію: ").strip()
+
+        if choice == '1':
+            add_movie(conn)
+        elif choice == '2':
+            add_actor(conn)
+        elif choice == '3':
+            show_movies_with_actors(conn)
+        elif choice == '4':
+            show_unique_genres(conn)
+        elif choice == '5':
+            show_movie_count_by_genre(conn)
+        elif choice == '6':
+            show_avg_birth_year_by_genre(conn)
+        elif choice == '7':
+            search_movies_by_title(conn)
+        elif choice == '8':
+            show_movies_with_pagination(conn)
+        elif choice == '9':
+            show_actors_and_movies_union(conn)
+        elif choice == '10':
+            show_movies_with_age(conn)
+        elif choice == '0':
+            print("Вихід з програми...")
+            conn.close()
+            sys.exit(0)
+        else:
+            print("Невірний вибір. Спробуйте ще раз.")
+
+
+if __name__ == "__main__":
+    main()
